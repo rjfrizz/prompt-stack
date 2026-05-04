@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AI Control Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0e0e0e; --surface: #161616; --border: #2a2a2a; --text: #e8e4dc; --muted: #6b6560;
+    --accent-builder: #c8a96e; --accent-maintenance: #7ab8a0; --accent-growth: #a89fd4; --accent-drift: #c4856a;
+    --mode-active-bg: #1e1e1e;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; min-height: 100vh; overflow-x: hidden; }
+  .header { padding: 28px 20px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 100; }
+  .header-label { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .header-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 300; color: var(--text); line-height: 1.2; }
+  .header-title em { font-style: italic; color: var(--accent-builder); }
+  .modes { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
+  .mode-tab { padding: 14px 8px 12px; text-align: center; cursor: pointer; border-right: 1px solid var(--border); transition: background 0.15s; position: relative; -webkit-tap-highlight-color: transparent; }
+  .mode-tab:last-child { border-right: none; }
+  .mode-tab.active { background: var(--mode-active-bg); }
+  .mode-tab.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--mode-color, var(--accent-builder)); }
+  .mode-tab[data-mode="builder"] { --mode-color: var(--accent-builder); }
+  .mode-tab[data-mode="maintenance"] { --mode-color: var(--accent-maintenance); }
+  .mode-tab[data-mode="growth"] { --mode-color: var(--accent-growth); }
+  .mode-tab[data-mode="drift"] { --mode-color: var(--accent-drift); }
+  .mode-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+  .mode-name { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: block; }
+  .mode-tab.active .mode-name { color: var(--mode-color, var(--accent-builder)); }
+  .content { padding: 0 0 80px; }
+  .mode-panel { display: none; }
+  .mode-panel.active { display: block; }
+  .mode-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+  .mode-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 300; font-style: italic; margin-bottom: 6px; }
+  .mode-description { font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .category { border-bottom: 1px solid var(--border); }
+  .category-header { padding: 14px 20px; display: flex; align-items: center; gap: 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .category-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); flex: 1; }
+  .category-arrow { color: var(--muted); font-size: 10px; transition: transform 0.2s; }
+  .category.open .category-arrow { transform: rotate(90deg); }
+  .prompts { display: none; padding: 0 20px 16px; flex-direction: column; gap: 8px; }
+  .category.open .prompts { display: flex; }
+  .prompt-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; -webkit-tap-highlight-color: transparent; }
+  .prompt-card:active { background: #1e1e1e; }
+  .prompt-text { font-size: 12px; line-height: 1.65; color: var(--text); margin-bottom: 10px; }
+  .prompt-footer { display: flex; align-items: center; justify-content: space-between; }
+  .prompt-tag { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); opacity: 0.7; }
+  .copy-btn { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; background: none; border: 1px solid currentColor; border-radius: 4px; padding: 4px 8px; cursor: pointer; opacity: 0.6; transition: opacity 0.15s; }
+  .copy-btn.copied { opacity: 1; color: #7ab8a0 !important; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1e1e1e; border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 10px 18px; border-radius: 24px; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; white-space: nowrap; z-index: 200; letter-spacing: 0.05em; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .custom-section { padding: 20px; border-top: 1px solid var(--border); margin-top: 4px; }
+  .custom-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; display: block; }
+  .custom-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 12px; resize: none; min-height: 80px; outline: none; line-height: 1.6; }
+  .custom-input:focus { border-color: var(--accent-builder); }
+  .custom-input::placeholder { color: var(--muted); }
+  .situation-hint { font-size: 10px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+  ::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-label">Personal</div>
+  <div class="header-title">AI <em>Control</em> Stack</div>
+</div>
+<div class="modes">
+  <div class="mode-tab active" data-mode="builder" onclick="switchMode('builder')"><span class="mode-icon">🧭</span><span class="mode-name">Build</span></div>
+  <div class="mode-tab" data-mode="maintenance" onclick="switchMode('maintenance')"><span class="mode-icon">🧹</span><span class="mode-name">Maintain</span></div>
+  <div class="mode-tab" data-mode="growth" onclick="switchMode('growth')"><span class="mode-icon">🌱</span><span class="mode-name">Grow</span></div>
+  <div class="mode-tab" data-mode="drift" onclick="switchMode('drift')"><span class="mode-icon">🌊</span><span class="mode-name">Drift</span></div>
+</div>
+<div class="content">
+  <div class="mode-panel active" id="panel-builder">
+    <div class="mode-header">
+      <div class="mode-title" style="color:var(--accent-builder)">Builder Mode</div>
+      <div class="mode-description">High energy, clear head. Move long-term goals forward. Remove future problems before they arrive.</div>
+    </div>
+    <div class="category open">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Decisions & Clarity</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I'm stuck on a decision: [describe it]. Walk me through a simple framework to resolve it in the next 15 minutes.</div>
+          <div class="prompt-footer"><span class="prompt-tag">decisions</span><button class="copy-btn" style="color:var(--accent-builder)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">What future problem can I eliminate right now with 10 minutes of focused thinking?</div>
+          <div class="prompt-footer"><span class="prompt-tag">leverage</span><button class="copy-btn" style="color:var(--accent-builder)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I've been avoiding [task/decision]. Help me break the resistance and take the first concrete step right now.</div>
+          <div class="prompt-footer"><span class="prompt-tag">resistance</span><button class="copy-btn" style="color:var(--accent-builder)">copy</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="category">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Systems & Automation</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Help me automate something I repeat every week. Here's what I do: [describe routine].</div>
+          <div class="prompt-footer"><span class="prompt-tag">automation</span><button class="copy-btn" style="color:var(--accent-builder)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Turn this vague idea into a repeatable system with clear steps: [describe idea].</div>
+          <div class="prompt-footer"><span class="prompt-tag">systems</span><button class="copy-btn" style="color:var(--accent-builder)">copy</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="category">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Creative & Music</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I have 15 minutes to work on music. Here's what I'm developing: [describe project]. What's the highest-leverage thing I can do right now?</div>
+          <div class="prompt-footer"><span class="prompt-tag">music</span><button class="copy-btn" style="color:var(--accent-builder)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I'm creatively blocked on [project]. Give me three unexpected angles I haven't considered.</div>
+          <div class="prompt-footer"><span class="prompt-tag">creative</span><button class="copy-btn" style="color:var(--accent-builder)">copy</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mode-panel" id="panel-maintenance">
+    <div class="mode-header">
+      <div class="mode-title" style="color:var(--accent-maintenance)">Maintenance Mode</div>
+      <div class="mode-description">Tired or waiting. Clear small burdens. Reduce the invisible weight of unfinished things.</div>
+    </div>
+    <div class="category open">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Communications</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Write a message I've been postponing: [describe situation and what I need to say]. Keep it clear and kind.</div>
+          <div class="prompt-footer"><span class="prompt-tag">messages</span><button class="copy-btn" style="color:var(--accent-maintenance)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I need to say no to [request] without damaging the relationship. Draft me two versions: direct, and gentle.</div>
+          <div class="prompt-footer"><span class="prompt-tag">boundaries</span><button class="copy-btn" style="color:var(--accent-maintenance)">copy</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="category">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Organize & Plan</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Here are my errands this week: [list them]. Help me batch them efficiently by location and energy level.</div>
+          <div class="prompt-footer"><span class="prompt-tag">errands</span><button class="copy-btn" style="color:var(--accent-maintenance)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">My mind feels cluttered. I'll dump everything I'm holding mentally — help me sort it into: do now, schedule, delegate, release. [dump list]</div>
+          <div class="prompt-footer"><span class="prompt-tag">mind dump</span><button class="copy-btn" style="color:var(--accent-maintenance)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Create a simple recurring checklist for [area of life: home / finances / health / work]. Make it realistic for someone with limited time.</div>
+          <div class="prompt-footer"><span class="prompt-tag">checklists</span><button class="copy-btn" style="color:var(--accent-maintenance)">copy</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="category">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Reduce Overwhelm</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I'm feeling overwhelmed right now. Help me identify the one thing that, if done today, would relieve the most pressure.</div>
+          <div class="prompt-footer"><span class="prompt-tag">overwhelm</span><button class="copy-btn" style="color:var(--accent-maintenance)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">What obligations could I legitimately remove from my life right now without real consequence?</div>
+          <div class="prompt-footer"><span class="prompt-tag">simplify</span><button class="copy-btn" style="color:var(--accent-maintenance)">copy</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mode-panel" id="panel-growth">
+    <div class="mode-header">
+      <div class="mode-title" style="color:var(--accent-growth)">Growth Mode</div>
+      <div class="mode-description">Curious energy. Learn things you'll actually use in the next 7 days. Short bursts that compound.</div>
+    </div>
+    <div class="category open">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Targeted Learning</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Teach me one concept from [topic] in under 5 minutes that I can actually apply this week.</div>
+          <div class="prompt-footer"><span class="prompt-tag">micro-learn</span><button class="copy-btn" style="color:var(--accent-growth)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I want to understand [concept] better. Explain it using an analogy that fits how I already think about [familiar topic].</div>
+          <div class="prompt-footer"><span class="prompt-tag">analogies</span><button class="copy-btn" style="color:var(--accent-growth)">copy</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="category">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Music & Craft</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Give me one music technique to explore this week — something that will expand what I'm capable of without overwhelming me.</div>
+          <div class="prompt-footer"><span class="prompt-tag">technique</span><button class="copy-btn" style="color:var(--accent-growth)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I just listened to [piece/artist]. What's worth noticing about it compositionally or emotionally that I might have missed?</div>
+          <div class="prompt-footer"><span class="prompt-tag">listening</span><button class="copy-btn" style="color:var(--accent-growth)">copy</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="category">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Reflection</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Ask me three questions that might reveal something useful about how I've been operating this week.</div>
+          <div class="prompt-footer"><span class="prompt-tag">self-inquiry</span><button class="copy-btn" style="color:var(--accent-growth)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">What pattern might be worth noticing in how I spend my attention? Here's a rough picture of my week: [describe].</div>
+          <div class="prompt-footer"><span class="prompt-tag">patterns</span><button class="copy-btn" style="color:var(--accent-growth)">copy</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mode-panel" id="panel-drift">
+    <div class="mode-header">
+      <div class="mode-title" style="color:var(--accent-drift)">Drift Mode</div>
+      <div class="mode-description">No output required. Mental recovery is high-performance. Wander without guilt.</div>
+    </div>
+    <div class="category open">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Gentle Curiosity</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Tell me something beautiful or strange about [any topic I'm vaguely curious about right now].</div>
+          <div class="prompt-footer"><span class="prompt-tag">wonder</span><button class="copy-btn" style="color:var(--accent-drift)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I want to think about nothing important. Give me a fascinating rabbit hole to fall into for the next few minutes.</div>
+          <div class="prompt-footer"><span class="prompt-tag">rabbit hole</span><button class="copy-btn" style="color:var(--accent-drift)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Surprise me with an idea from an unusual field that connects to music or creativity in a non-obvious way.</div>
+          <div class="prompt-footer"><span class="prompt-tag">cross-domain</span><button class="copy-btn" style="color:var(--accent-drift)">copy</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="category">
+      <div class="category-header" onclick="toggleCategory(this)"><span class="category-label">Wind Down</span><span class="category-arrow">▶</span></div>
+      <div class="prompts">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I'm done thinking for today. Help me close the loop on the day with a simple reflection — no pressure, just a gentle question or two.</div>
+          <div class="prompt-footer"><span class="prompt-tag">close loop</span><button class="copy-btn" style="color:var(--accent-drift)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">Give me a short, beautiful piece of prose or an image in words — nothing I have to think about, just something to rest inside for a moment.</div>
+          <div class="prompt-footer"><span class="prompt-tag">rest</span><button class="copy-btn" style="color:var(--accent-drift)">copy</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="custom-section">
+    <span class="custom-label">Describe your situation</span>
+    <textarea class="custom-input" placeholder="e.g. I have 10 minutes, moderate energy, and something about [topic] is nagging at me…"></textarea>
+    <div class="situation-hint">Type freely — then copy and paste this context into Claude along with any prompt above.</div>
+  </div>
+</div>
+<div class="toast" id="toast">Copied to clipboard</div>
+<script>
+  function switchMode(mode) {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-mode="'+mode+'"]').classList.add('active');
+    document.getElementById('panel-'+mode).classList.add('active');
+  }
+  function toggleCategory(header) { header.parentElement.classList.toggle('open'); }
+  function copyPrompt(card) {
+    const text = card.querySelector('.prompt-text').textContent.trim();
+    const btn = card.querySelector('.copy-btn');
+    navigator.clipboard.writeText(text).then(() => showCopied(btn)).catch(() => {
+      const el = document.createElement('textarea');
+      el.value = text; document.body.appendChild(el); el.select();
+      document.execCommand('copy'); document.body.removeChild(el);
+      showCopied(btn);
+    });
+  }
+  function showCopied(btn) {
+    btn.textContent = 'copied ✓'; btn.classList.add('copied');
+    showToast('Copied to clipboard');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  }
+  function showToast(msg) {
+    const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+</script>
+</body>
+</html>
