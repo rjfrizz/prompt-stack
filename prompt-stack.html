@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -11,6 +10,7 @@
   :root {
     --bg: #0e0e0e; --surface: #161616; --border: #2a2a2a; --text: #e8e4dc; --muted: #6b6560;
     --accent-builder: #c8a96e; --accent-maintenance: #7ab8a0; --accent-growth: #a89fd4; --accent-drift: #c4856a;
+    --accent-pause: #6a98c4;
     --mode-active-bg: #1e1e1e;
   }
   body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; min-height: 100vh; overflow-x: hidden; }
@@ -18,8 +18,8 @@
   .header-label { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
   .header-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 300; color: var(--text); line-height: 1.2; }
   .header-title em { font-style: italic; color: var(--accent-builder); }
-  .modes { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
-  .mode-tab { padding: 14px 8px 12px; text-align: center; cursor: pointer; border-right: 1px solid var(--border); transition: background 0.15s; position: relative; -webkit-tap-highlight-color: transparent; }
+  .modes { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
+  .mode-tab { padding: 14px 4px 12px; text-align: center; cursor: pointer; border-right: 1px solid var(--border); transition: background 0.15s; position: relative; -webkit-tap-highlight-color: transparent; }
   .mode-tab:last-child { border-right: none; }
   .mode-tab.active { background: var(--mode-active-bg); }
   .mode-tab.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--mode-color, var(--accent-builder)); }
@@ -27,10 +27,170 @@
   .mode-tab[data-mode="maintenance"] { --mode-color: var(--accent-maintenance); }
   .mode-tab[data-mode="growth"] { --mode-color: var(--accent-growth); }
   .mode-tab[data-mode="drift"] { --mode-color: var(--accent-drift); }
+  .mode-tab[data-mode="pause"] { --mode-color: var(--accent-pause); }
   .mode-icon { font-size: 18px; display: block; margin-bottom: 4px; }
   .mode-name { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: block; }
   .mode-tab.active .mode-name { color: var(--mode-color, var(--accent-builder)); }
   .content { padding: 0 0 80px; }
+
+  /* Pause mode specific */
+  .pause-intro {
+    padding: 24px 20px 16px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .pause-headline {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+  .pause-sub {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .pause-section-label {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 20px 20px 12px;
+  }
+  .fatigue-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 20px 16px;
+  }
+  .fatigue-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fatigue-card:active { background: #1e1e1e; }
+  .fatigue-card.open { border-color: var(--accent-pause); }
+  .fatigue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .fatigue-name {
+    font-size: 13px;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+  .fatigue-name .kind {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--accent-pause);
+    margin-right: 6px;
+    font-weight: 400;
+  }
+  .fatigue-arrow {
+    color: var(--muted);
+    font-size: 10px;
+    transition: transform 0.2s;
+  }
+  .fatigue-card.open .fatigue-arrow { transform: rotate(90deg); }
+  .fatigue-suggestion {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--muted);
+  }
+  .fatigue-card.open .fatigue-suggestion { display: block; }
+  .fatigue-suggestion strong {
+    color: var(--text);
+    font-weight: 400;
+    display: block;
+    margin-bottom: 4px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 13px;
+  }
+  .breath-button {
+    display: block;
+    width: calc(100% - 40px);
+    margin: 8px 20px 20px;
+    padding: 16px;
+    background: transparent;
+    border: 1px solid var(--accent-pause);
+    border-radius: 8px;
+    color: var(--accent-pause);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+  }
+  .breath-button:active { background: rgba(106, 152, 196, 0.1); }
+  .breath-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 300;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+  }
+  .breath-overlay.show { display: flex; }
+  .breath-circle {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-pause) 0%, transparent 70%);
+    opacity: 0.4;
+    transform: scale(0.6);
+    transition: transform 4s ease-in-out, opacity 4s ease-in-out;
+    margin-bottom: 40px;
+  }
+  .breath-circle.expand { transform: scale(1.2); opacity: 0.8; }
+  .breath-instruction {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--text);
+    margin-bottom: 8px;
+    transition: opacity 0.4s;
+  }
+  .breath-count {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 40px;
+  }
+  .breath-close {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
   .mode-panel { display: none; }
   .mode-panel.active { display: block; }
   .mode-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
@@ -71,6 +231,7 @@
   <div class="mode-tab" data-mode="maintenance" onclick="switchMode('maintenance')"><span class="mode-icon">🧹</span><span class="mode-name">Maintain</span></div>
   <div class="mode-tab" data-mode="growth" onclick="switchMode('growth')"><span class="mode-icon">🌱</span><span class="mode-name">Grow</span></div>
   <div class="mode-tab" data-mode="drift" onclick="switchMode('drift')"><span class="mode-icon">🌊</span><span class="mode-name">Drift</span></div>
+  <div class="mode-tab" data-mode="pause" onclick="switchMode('pause')"><span class="mode-icon">⏸</span><span class="mode-name">Pause</span></div>
 </div>
 <div class="content">
   <div class="mode-panel active" id="panel-builder">
@@ -252,12 +413,106 @@
       </div>
     </div>
   </div>
+
+  <div class="mode-panel" id="panel-pause">
+    <div class="pause-intro">
+      <div class="pause-headline">The urge isn't the enemy — it's a signal.</div>
+      <div class="pause-sub">Before opening anything, pause for twenty seconds. Notice which kind of tired this is. Choose a doorway into rest.</div>
+    </div>
+
+    <button class="breath-button" onclick="startBreath()">⏸ 20-second pause</button>
+
+    <div class="pause-section-label">What kind of tired is this?</div>
+
+    <div class="fatigue-cards">
+      <div class="fatigue-card" onclick="toggleFatigue(this)">
+        <div class="fatigue-header">
+          <div class="fatigue-name"><span class="kind">body</span>tired</div>
+          <div class="fatigue-arrow">▶</div>
+        </div>
+        <div class="fatigue-suggestion">
+          <strong>Try: lie down or stretch</strong>
+          Your body is asking for stillness or release. Three minutes flat on your back, or a slow stretch sequence. Scrolling can't deliver what muscles and nervous system are requesting.
+        </div>
+      </div>
+
+      <div class="fatigue-card" onclick="toggleFatigue(this)">
+        <div class="fatigue-header">
+          <div class="fatigue-name"><span class="kind">decision</span>tired</div>
+          <div class="fatigue-arrow">▶</div>
+        </div>
+        <div class="fatigue-suggestion">
+          <strong>Try: stare out a window</strong>
+          You've made too many micro-choices today. Don't add more by curating a feed. Look at something far away, with no decisions attached, for two minutes.
+        </div>
+      </div>
+
+      <div class="fatigue-card" onclick="toggleFatigue(this)">
+        <div class="fatigue-header">
+          <div class="fatigue-name"><span class="kind">emotional</span>tired</div>
+          <div class="fatigue-arrow">▶</div>
+        </div>
+        <div class="fatigue-suggestion">
+          <strong>Try: music without tasks</strong>
+          Something is sitting in your chest. Put on music that fits the feeling — not music to fix it. Sit with it for one song. Don't multitask. Let it move through.
+        </div>
+      </div>
+
+      <div class="fatigue-card" onclick="toggleFatigue(this)">
+        <div class="fatigue-header">
+          <div class="fatigue-name"><span class="kind">social</span>tired</div>
+          <div class="fatigue-arrow">▶</div>
+        </div>
+        <div class="fatigue-suggestion">
+          <strong>Try: silence</strong>
+          You've been "on" for too many people. Scrolling brings more people, more voices, more reactions. What you need is the opposite — no inputs, no performance, for ten minutes.
+        </div>
+      </div>
+
+      <div class="fatigue-card" onclick="toggleFatigue(this)">
+        <div class="fatigue-header">
+          <div class="fatigue-name"><span class="kind">cognitive</span>tired</div>
+          <div class="fatigue-arrow">▶</div>
+        </div>
+        <div class="fatigue-suggestion">
+          <strong>Try: slow repetitive activity</strong>
+          Your brain wants to disengage from sense-making. Wash dishes. Walk a familiar route. Fold laundry. Boring, rhythmic, no input required. This is what rest feels like.
+        </div>
+      </div>
+    </div>
+
+    <div class="pause-section-label">Or talk it through with Claude</div>
+
+    <div class="category open" style="border-top: 1px solid var(--border)">
+      <div class="prompts" style="display: flex; padding-top: 16px; flex-direction: column;">
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I feel the urge to scroll right now. Help me figure out what kind of tired I actually am, and what would actually rest me.</div>
+          <div class="prompt-footer"><span class="prompt-tag">diagnose</span><button class="copy-btn" style="color:var(--accent-pause)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">What might my nervous system be quietly asking for right now, underneath the urge to reach for my phone?</div>
+          <div class="prompt-footer"><span class="prompt-tag">underneath</span><button class="copy-btn" style="color:var(--accent-pause)">copy</button></div>
+        </div>
+        <div class="prompt-card" onclick="copyPrompt(this)">
+          <div class="prompt-text">I just scrolled and feel worse, not better. Help me reflect on what I was actually trying to avoid — without judgment.</div>
+          <div class="prompt-footer"><span class="prompt-tag">after</span><button class="copy-btn" style="color:var(--accent-pause)">copy</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="custom-section">
     <span class="custom-label">Describe your situation</span>
     <textarea class="custom-input" placeholder="e.g. I have 10 minutes, moderate energy, and something about [topic] is nagging at me…"></textarea>
     <div class="situation-hint">Type freely — then copy and paste this context into Claude along with any prompt above.</div>
   </div>
 </div>
+<div class="breath-overlay" id="breathOverlay">
+  <div class="breath-circle" id="breathCircle"></div>
+  <div class="breath-instruction" id="breathInstruction">Breathe in</div>
+  <div class="breath-count" id="breathCount">1 of 4</div>
+  <button class="breath-close" onclick="closeBreath()">Close</button>
+</div>
+
 <div class="toast" id="toast">Copied to clipboard</div>
 <script>
   function switchMode(mode) {
@@ -285,6 +540,48 @@
   function showToast(msg) {
     const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function toggleFatigue(card) {
+    const wasOpen = card.classList.contains('open');
+    document.querySelectorAll('.fatigue-card').forEach(c => c.classList.remove('open'));
+    if (!wasOpen) card.classList.add('open');
+  }
+
+  let breathTimer = null;
+  function startBreath() {
+    document.getElementById('breathOverlay').classList.add('show');
+    const circle = document.getElementById('breathCircle');
+    const instruction = document.getElementById('breathInstruction');
+    const count = document.getElementById('breathCount');
+    let cycle = 0;
+    const totalCycles = 4;
+
+    function doCycle() {
+      if (cycle >= totalCycles) {
+        instruction.textContent = 'Now choose';
+        count.textContent = '';
+        circle.classList.remove('expand');
+        breathTimer = setTimeout(() => closeBreath(), 2000);
+        return;
+      }
+      cycle++;
+      count.textContent = cycle + ' of ' + totalCycles;
+      instruction.textContent = 'Breathe in';
+      circle.classList.add('expand');
+      breathTimer = setTimeout(() => {
+        instruction.textContent = 'Breathe out';
+        circle.classList.remove('expand');
+        breathTimer = setTimeout(doCycle, 4000);
+      }, 4000);
+    }
+    doCycle();
+  }
+
+  function closeBreath() {
+    if (breathTimer) { clearTimeout(breathTimer); breathTimer = null; }
+    document.getElementById('breathOverlay').classList.remove('show');
+    document.getElementById('breathCircle').classList.remove('expand');
   }
 </script>
 </body>
